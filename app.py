@@ -1,43 +1,58 @@
 import streamlit as st
-import requests
-from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 import openai
 
-# Função para extrair o transcript de um vídeo do YouTube em português
+# Função para extrair o transcript de um vídeo do YouTube
 
 
-def get_youtube_transcript(video_id, lang='en, pt'):
+def get_youtube_transcript(video_id):
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(
-            video_id, languages=[lang])
-        transcript = " ".join([entry['text'] for entry in transcript_list])
-        return transcript
+        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+        transcript = None
+        for transcript_obj in transcript_list:
+            try:
+                transcript = transcript_obj.fetch()
+                break
+            except Exception as e:
+                st.write(f"Erro ao buscar transcript: {e}")
+                continue
+        if not transcript:
+            st.write("Não foi possível encontrar um transcript para este vídeo.")
+            return None
+        transcript_text = " ".join([entry['text'] for entry in transcript])
+        return transcript_text
     except NoTranscriptFound:
-        st.write(
-            "Não foi possível encontrar um transcript em português para este vídeo.")
+        st.write("Não foi possível encontrar um transcript para este vídeo.")
+        return None
+    except TranscriptsDisabled:
+        st.write("Transcripts estão desativados para este vídeo.")
         return None
     except Exception as e:
         st.write(f"Erro ao obter o transcript: {e}")
         return None
 
-# Função para resumir o transcript usando o ChatGPT
+# Função para resumir e traduzir o transcript usando o ChatGPT
 
 
 def summarize_transcript(transcript):
-    openai.api_key = st.secrets["openai"]["openai_key"]
-    response = openai.ChatCompletion.create(
-        model="gpt-4o",
-        messages=[
-            {"role": "system", "content": "Você é um assistente que faz resumo detalhados e separa em tópicos."},
-            {"role": "user", "content": f"Por favor, resuma os principais pontos do seguinte transcript: {transcript}"}
-        ],
-        temperature=0.7,
-    )
-    if response.choices:
-        summary = response.choices[0].message['content']
-        return summary
-    else:
-        return "Não foi possível gerar um resumo."
+    try:
+        openai.api_key = st.secrets["openai"]["openai_key"]
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": "Você é um assistente que faz resumos detalhados e separa em tópicos."},
+                {"role": "user", "content": f"Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}"}
+            ],
+            temperature=0.7,
+        )
+        if response and response.choices:
+            summary = response.choices[0].message['content']
+            return summary
+        else:
+            return "Não foi possível gerar um resumo."
+    except Exception as e:
+        st.write(f"Erro ao chamar a API do OpenAI: {e}")
+        return None
 
 # Interface do Streamlit
 
@@ -54,17 +69,17 @@ def main():
             video_id = youtube_url.split("v=")[-1]
 
             with st.spinner("Obtendo o transcript do vídeo..."):
-                transcript = get_youtube_transcript(video_id, lang='pt')
+                transcript = get_youtube_transcript(video_id)
 
             if transcript:
-                st.subheader("Transcript:")
-                st.write(transcript)
-
                 with st.spinner("Gerando o resumo..."):
                     summary = summarize_transcript(transcript)
 
-                st.subheader("Resumo:")
-                st.write(summary)
+                if summary:
+                    st.subheader("Resumo:")
+                    st.write(summary)
+                else:
+                    st.error("Não foi possível gerar o resumo.")
             else:
                 st.error("Não foi possível obter o transcript do vídeo.")
         else:
