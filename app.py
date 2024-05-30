@@ -43,7 +43,7 @@ def summarize_transcript(transcript):
     }
 
     data = {
-        "model": "gpt-4",
+        "model": "gpt-4o",
         "messages": [
             {"role": "system", "content": "Você é um assistente que faz resumos detalhados e separa em tópicos."},
             {"role": "user", "content": f"Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}"}
