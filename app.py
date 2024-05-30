@@ -37,16 +37,14 @@ def get_youtube_transcript(video_id):
 def summarize_transcript(transcript):
     try:
         openai.api_key = st.secrets["openai"]["openai_key"]
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": "Você é um assistente que faz resumos detalhados e separa em tópicos."},
-                {"role": "user", "content": f"Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}"}
-            ],
+        response = openai.Completion.create(
+            model="gpt-4",
+            prompt=f"Você é um assistente que faz resumos detalhados e separa em tópicos. Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}",
             temperature=0.7,
+            max_tokens=500
         )
         if response and response.choices:
-            summary = response.choices[0].message['content']
+            summary = response.choices[0].text.strip()
             return summary
         else:
             return "Não foi possível gerar um resumo."
