@@ -1,5 +1,6 @@
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+import requests
 import openai
 
 # Função para extrair o transcript de um vídeo do YouTube
@@ -35,22 +36,32 @@ def get_youtube_transcript(video_id):
 
 
 def summarize_transcript(transcript):
-    try:
-        openai.api_key = st.secrets["openai"]["openai_key"]
-        response = openai.Completion.create(
-            model="gpt-4",
-            prompt=f"Você é um assistente que faz resumos detalhados e separa em tópicos. Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}",
-            temperature=0.7,
-            max_tokens=500
-        )
-        if response and response.choices:
-            summary = response.choices[0].text.strip()
-            return summary
+    api_key = st.secrets["openai"]["openai_key"]
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    }
+
+    data = {
+        "model": "gpt-4",
+        "messages": [
+            {"role": "system", "content": "Você é um assistente que faz resumos detalhados e separa em tópicos."},
+            {"role": "user", "content": f"Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}"}
+        ],
+        "temperature": 0.7,
+    }
+
+    response = requests.post(
+        'https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+
+    if response.status_code == 200:
+        response_json = response.json()
+        if 'choices' in response_json and len(response_json['choices']) > 0:
+            return response_json['choices'][0]['message']['content']
         else:
-            return "Não foi possível gerar um resumo."
-    except Exception as e:
-        st.write(f"Erro ao chamar a API do OpenAI: {e}")
-        return None
+            return "Nenhuma resposta válida foi retornada pela API."
+    else:
+        return f"Erro ao chamar a API: {response.status_code} - {response.text}"
 
 # Interface do Streamlit
 
