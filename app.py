@@ -2,6 +2,22 @@ import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 import requests
 import openai
+import re
+
+# Função para extrair o ID do vídeo do YouTube
+
+
+def extract_video_id(url):
+    # Verifica diferentes formatos de URLs do YouTube
+    patterns = [
+        r'(?:https?://)?(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([^&?/]+)'
+    ]
+
+    for pattern in patterns:
+        match = re.match(pattern, url)
+        if match:
+            return match.group(1)
+    return None
 
 # Função para extrair o transcript de um vídeo do YouTube
 
@@ -75,22 +91,26 @@ def main():
     if st.button("Extrair e Resumir"):
         if youtube_url:
             # Extrair o ID do vídeo do URL
-            video_id = youtube_url.split("v=")[-1]
+            video_id = extract_video_id(youtube_url)
 
-            with st.spinner("Obtendo o transcript do vídeo..."):
-                transcript = get_youtube_transcript(video_id)
+            if video_id:
+                with st.spinner("Obtendo o transcript do vídeo..."):
+                    transcript = get_youtube_transcript(video_id)
 
-            if transcript:
-                with st.spinner("Gerando o resumo..."):
-                    summary = summarize_transcript(transcript)
+                if transcript:
+                    with st.spinner("Gerando o resumo..."):
+                        summary = summarize_transcript(transcript)
 
-                if summary:
-                    st.subheader("Resumo:")
-                    st.write(summary)
+                    if summary:
+                        st.subheader("Resumo:")
+                        st.write(summary)
+                    else:
+                        st.error("Não foi possível gerar o resumo.")
                 else:
-                    st.error("Não foi possível gerar o resumo.")
+                    st.error("Não foi possível obter o transcript do vídeo.")
             else:
-                st.error("Não foi possível obter o transcript do vídeo.")
+                st.error(
+                    "Não foi possível extrair o ID do vídeo. Verifique o link do YouTube.")
         else:
             st.error("Por favor, insira um link válido do YouTube.")
 
