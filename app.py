@@ -56,7 +56,7 @@ def summarize_transcript(transcript):
     client = OpenAI(api_key=api_key)
 
     response = client.chat.completions.create(
-        model="gpt-4o-latest",
+        model="chatgpt-4o-latest",
         messages=[
             {"role": "system", "content": "Você é um assistente que faz resumos detalhados e separa em tópicos."},
             {"role": "user", "content": f"Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}"}
@@ -66,15 +66,8 @@ def summarize_transcript(transcript):
 
     if response and response.choices:
         return response.choices[0].message.content
-
-    if response.status_code == 200:
-        response_json = response.json()
-        if 'choices' in response_json and len(response_json['choices']) > 0:
-            return response_json['choices'][0]['message']['content']
-        else:
-            return "Nenhuma resposta válida foi retornada pela API."
     else:
-        return f"Erro ao chamar a API: {response.status_code} - {response.text}"
+        return "Nenhuma resposta válida foi retornada pela API."
 
 # Interface do Streamlit
 
