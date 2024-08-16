@@ -1,7 +1,7 @@
 import streamlit as st
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 import requests
-import openai
+from openai import OpenAI
 import re
 
 # Função para extrair o ID do vídeo do YouTube
@@ -53,22 +53,19 @@ def get_youtube_transcript(video_id):
 
 def summarize_transcript(transcript):
     api_key = st.secrets["openai"]["openai_key"]
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {api_key}',
-    }
+    client = OpenAI(api_key=api_key)
 
-    data = {
-        "model": "gpt-4o-latest",
-        "messages": [
+    response = client.chat.completions.create(
+        model="gpt-4o-latest",
+        messages=[
             {"role": "system", "content": "Você é um assistente que faz resumos detalhados e separa em tópicos."},
             {"role": "user", "content": f"Por favor, traduza e resuma os principais pontos do seguinte transcript: {transcript}"}
         ],
-        "temperature": 0.7,
-    }
+        temperature=0.7,
+    )
 
-    response = requests.post(
-        'https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+    if response and response.choices:
+        return response.choices[0].message.content
 
     if response.status_code == 200:
         response_json = response.json()
